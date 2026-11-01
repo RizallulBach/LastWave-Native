@@ -1,0 +1,41 @@
+name: Build LastWave Debug APK
+
+# Personal fork build: the upstream "Build LastWave APK" workflow builds a
+# release variant, which by design refuses to run without the project
+# owner's signing keystore secrets. This workflow builds the debug variant
+# instead — no secrets needed — so fork changes can be compiled and tried
+# on a device. Debug APKs are signed with the standard Android debug key:
+# installable for testing, but not updatable over an official release
+# install (different signature).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Grant Gradle execute permission
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LastWave-Debug-APK
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
