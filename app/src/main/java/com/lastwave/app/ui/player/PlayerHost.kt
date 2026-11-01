@@ -1135,6 +1135,7 @@ private fun ExpandedPlayer(
         lyricsProviderStatuses = lyricsProviderStatuses,
         onProbeLyricsProviders = viewModel::probeLyricsProviders,
         wavySeekbarEnabled = settings.wavySeekbarEnabled,
+        hideSongStatus = settings.hideSongStatus,
         rotatingBackgroundEnabled = settings.rotatingBackgroundEnabled,
         lyricsRotatingBackgroundEnabled = settings.lyricsRotatingBackgroundEnabled,
         lyricsOffsetMs = lyricsOffsetMs,
@@ -2289,6 +2290,7 @@ private fun FullPlayer(
     progressState: StateFlow<PlaybackProgressState>,
     player: MusicPlayer,
     lyricsState: LyricsUiState,
+    hideSongStatus: Boolean = false,
     wavySeekbarEnabled: Boolean = true,
     rotatingBackgroundEnabled: Boolean = true,
     lyricsRotatingBackgroundEnabled: Boolean = false,
@@ -2956,17 +2958,23 @@ private fun FullPlayer(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.9.sp,
                                 )
-                                Text(
-                                    if (currentTab == FullPlayerTab.LYRICS) {
-                                        "${track.title} • ${track.artist}"
-                                    } else {
-                                        state.sourceLabel.takeIf { it.isNotBlank() } ?: "LastWave"
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.70f),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                // "Hide Song Status" (BitChord parity): hide the
+                                // source ("Playing from") line under the header.
+                                // The LYRICS tab keeps its title • artist line —
+                                // that is track info, not song status.
+                                if (currentTab == FullPlayerTab.LYRICS || !hideSongStatus) {
+                                    Text(
+                                        if (currentTab == FullPlayerTab.LYRICS) {
+                                            "${track.title} • ${track.artist}"
+                                        } else {
+                                            state.sourceLabel.takeIf { it.isNotBlank() } ?: "LastWave"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.White.copy(alpha = 0.70f),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
                             }
                             Row(
                                 modifier = Modifier.align(Alignment.CenterEnd),
