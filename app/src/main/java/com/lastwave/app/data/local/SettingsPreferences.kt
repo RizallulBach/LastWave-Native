@@ -135,6 +135,9 @@ data class MiscSettings(
     /** When true (default), uses the multi-layer dynamic wavy seekbar.
      *  When false, uses the classic standard progress slider in the player tab. */
     val wavySeekbarEnabled: Boolean = true,
+    /** When true, hides the source ("Playing from") line under the NOW PLAYING
+     *  header in the main player. Mirrors BitChord's "Hide Song Status". */
+    val hideSongStatus: Boolean = false,
     val rotatingBackgroundEnabled: Boolean = true,
     /** When true, animates fluid rotating artwork in the lyrics background.
      *  When false (default), uses static blurred artwork background in the lyrics view. */
@@ -358,6 +361,7 @@ class SettingsPreferences @Inject constructor(
         val CROSSFADE_ENABLED = booleanPreferencesKey("lw_crossfade_enabled")
         val CROSSFADE_SECONDS = intPreferencesKey("lw_crossfade_seconds")
         val WAVY_SEEKBAR_ENABLED = booleanPreferencesKey("lw_wavy_seekbar_enabled")
+        val HIDE_SONG_STATUS = booleanPreferencesKey("lw_hide_song_status")
         val ROTATING_BACKGROUND_ENABLED = booleanPreferencesKey("lw_rotating_background_enabled")
         val LYRICS_ROTATING_BACKGROUND_ENABLED = booleanPreferencesKey("lw_lyrics_rotating_background_enabled")
         val KEEP_LYRICS_SCREEN_AWAKE = booleanPreferencesKey("lw_keep_lyrics_screen_awake")
@@ -451,6 +455,7 @@ class SettingsPreferences @Inject constructor(
                 crossfadeEnabled = p.readSafely(Keys.CROSSFADE_ENABLED) ?: false,
                 crossfadeSeconds = (p.readSafely(Keys.CROSSFADE_SECONDS) ?: 5).coerceIn(1, 12),
                 wavySeekbarEnabled = p.readSafely(Keys.WAVY_SEEKBAR_ENABLED) ?: true,
+                hideSongStatus = p.readSafely(Keys.HIDE_SONG_STATUS) ?: false,
                 rotatingBackgroundEnabled = p.readSafely(Keys.ROTATING_BACKGROUND_ENABLED) ?: true,
                 lyricsRotatingBackgroundEnabled = p.readSafely(Keys.LYRICS_ROTATING_BACKGROUND_ENABLED) ?: false,
                 keepLyricsScreenAwake = p.readSafely(Keys.KEEP_LYRICS_SCREEN_AWAKE) ?: false,
@@ -749,6 +754,10 @@ class SettingsPreferences @Inject constructor(
 
     suspend fun setWavySeekbarEnabled(enabled: Boolean) {
         dataStore.edit { it[Keys.WAVY_SEEKBAR_ENABLED] = enabled }
+    }
+
+    suspend fun setHideSongStatus(enabled: Boolean) {
+        dataStore.edit { it[Keys.HIDE_SONG_STATUS] = enabled }
     }
 
     suspend fun setRotatingBackgroundEnabled(enabled: Boolean) {
