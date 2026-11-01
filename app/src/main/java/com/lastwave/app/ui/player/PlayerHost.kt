@@ -2223,7 +2223,6 @@ private val AppleMusicFallbackGradient = listOf(
     Color(0xFF050505),
 )
 
-@Composable
 /**
  * BitChord-style inline lyric: the currently sung synced line, shown on the
  * NOW_PLAYING tab right above the seek bar, so the live lyric can be read
@@ -2285,6 +2284,7 @@ private fun InlineSyncedLyricLine(
     }
 }
 
+@Composable
 private fun FullPlayer(
     state: MusicPlayerState,
     progressState: StateFlow<PlaybackProgressState>,
