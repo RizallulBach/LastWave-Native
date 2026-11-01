@@ -885,14 +885,19 @@ fun PlayerHost(
     var currentTab by rememberSaveable { mutableStateOf(FullPlayerTab.NOW_PLAYING) }
     var playlistTrack by remember { mutableStateOf<PlayableTrack?>(null) }
     val settings by viewModel.settings.collectAsStateWithLifecycle()
-    val keepLyricsAwake = expanded && currentTab == FullPlayerTab.LYRICS && settings.keepLyricsScreenAwake
+    // Always-on player: keep the screen awake for as long as the main
+    // player is open (any tab), so the display never sleeps mid-song while
+    // the player is in front of the user. Restored automatically when the
+    // player collapses. This subsumes the older lyrics-tab-only condition
+    // (expanded && LYRICS && settings.keepLyricsScreenAwake).
+    val keepScreenAwake = expanded && state.current != null
     val currentView = androidx.compose.ui.platform.LocalView.current
-    DisposableEffect(keepLyricsAwake) {
-        if (keepLyricsAwake) {
+    DisposableEffect(keepScreenAwake) {
+        if (keepScreenAwake) {
             currentView.keepScreenOn = true
         }
         onDispose {
-            if (keepLyricsAwake) {
+            if (keepScreenAwake) {
                 currentView.keepScreenOn = false
             }
         }
