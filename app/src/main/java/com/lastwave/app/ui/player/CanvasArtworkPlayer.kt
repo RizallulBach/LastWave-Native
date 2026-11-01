@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -117,7 +118,13 @@ fun CanvasArtworkPlayer(
     val currentPresentationAlpha by rememberUpdatedState(presentationAlpha)
     val reportAspect by rememberUpdatedState(onAspectRatioChanged)
 
-    val player = remember {
+    // Keyed by canvas: a player instance that survives a track change can be
+    // left bound to a stale surface/state and never render the new clip (the
+    // canvas then only appears after the player UI is recreated, e.g. by a
+    // lyrics-tab round trip). A fresh player per canvas mirrors that
+    // recreation on every track change; the old one is released by the
+    // DisposableEffect(player) below.
+    val player = remember(canvas) {
         val httpFactory = DefaultHttpDataSource.Factory()
             .setUserAgent(CANVAS_UA)
             .setAllowCrossProtocolRedirects(true)
@@ -178,7 +185,7 @@ fun CanvasArtworkPlayer(
     }
 
     val foreground = rememberIsForeground()
-    LaunchedEffect(foreground, pausedForTransition) {
+    LaunchedEffect(player, foreground, pausedForTransition) {
         player.playWhenReady = foreground && !pausedForTransition
     }
 
@@ -239,6 +246,10 @@ fun CanvasArtworkPlayer(
         }
     }
 
+    // Keyed by player so a new canvas's player gets a fresh TextureView bound
+    // to it (setVideoTextureView only runs in the factory); reusing the old
+    // view would keep the new player rendering into the released one.
+    key(player) {
     AndroidView(
         factory = { viewContext ->
             val texture = TextureView(viewContext).apply {
@@ -321,6 +332,7 @@ fun CanvasArtworkPlayer(
         },
         modifier = modifier.onSizeChanged { bounds = it },
     )
+    }
 }
 
 private fun TextureView.captureAt(
