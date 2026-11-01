@@ -1397,7 +1397,7 @@ fun SettingsScreen(
                         item {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     SectionLabel(stringResource(R.string.settings_section_experimental))
-                    SettingsGroup(rowCount = 11) { index, position ->
+                    SettingsGroup(rowCount = 12) { index, position ->
                         when (index) {
                             0 -> SettingsToggleCard(
                                 icon = Icons.Filled.Lyrics,
@@ -1566,6 +1566,21 @@ fun SettingsScreen(
                                 onCheckedChange = viewModel::setButtonNowPlayingEnabled,
                                 position = position,
                                 isHighlighted = (highlightedSettingId == "appearance.button_now_playing"),
+                            )
+                            11 -> SettingsToggleCard(
+                                icon = Icons.Filled.VisibilityOff,
+                                iconContainer = MaterialTheme.colorScheme.tertiaryContainer,
+                                iconTint = MaterialTheme.colorScheme.onTertiaryContainer,
+                                title = "Hide Song Status",
+                                subtitle = if (misc.hideSongStatus) {
+                                    "\u201cPlaying from\u201d text hidden in the main player"
+                                } else {
+                                    "Hides the \u201cPlaying from\u201d text in the main player"
+                                },
+                                checked = misc.hideSongStatus,
+                                onCheckedChange = viewModel::setHideSongStatus,
+                                position = position,
+                                isHighlighted = (highlightedSettingId == "appearance.hide_song_status"),
                             )
                         }
                     }

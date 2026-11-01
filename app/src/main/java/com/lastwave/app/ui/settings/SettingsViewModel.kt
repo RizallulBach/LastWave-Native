@@ -701,6 +701,9 @@ class SettingsViewModel @Inject constructor(
     fun setWavySeekbarEnabled(enabled: Boolean) = launchSettingsAction("update seekbar style") {
         settingsPreferences.setWavySeekbarEnabled(enabled)
     }
+    fun setHideSongStatus(enabled: Boolean) = launchSettingsAction("update song status visibility") {
+        settingsPreferences.setHideSongStatus(enabled)
+    }
     fun setRotatingBackgroundEnabled(enabled: Boolean) = launchSettingsAction("update rotating background") {
         settingsPreferences.setRotatingBackgroundEnabled(enabled)
     }

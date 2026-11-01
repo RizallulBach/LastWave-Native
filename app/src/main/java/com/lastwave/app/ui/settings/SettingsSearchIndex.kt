@@ -650,6 +650,23 @@ object SettingsSearchIndex {
             )
             add(
                 SettingsEntry(
+                    id = "appearance.hide_song_status",
+                    title = "Hide Song Status",
+                    subtitle = "Hides the \u201cPlaying from\u201d text in the main player",
+                    keywords = listOf(
+                        "hide song status", "playing from", "source label", "player header",
+                        "song status", "now playing text"
+                    ),
+                    icon = Icons.Filled.VisibilityOff,
+                    iconContainer = { MaterialTheme.colorScheme.tertiaryContainer },
+                    iconTint = { MaterialTheme.colorScheme.onTertiaryContainer },
+                    parentTab = SettingsTab.APPEARANCE,
+                    section = "Experimental & Features",
+                    type = EntryType.TOGGLE,
+                )
+            )
+            add(
+                SettingsEntry(
                     id = "appearance.music_video",
                     title = "Music Video",
                     subtitle = "Watch exact-sync music video of currently playing song in player menu",
