@@ -896,6 +896,29 @@ fun PlayerHost(
             }
         }
     }
+    // Immersive player: hide the system status bar (clock, battery and
+    // notification icons) for as long as the main player is open, and
+    // restore it when the player collapses. A swipe from the top edge
+    // still reveals the bar temporarily. Only the status bar is owned
+    // here — the in-player fullscreen modes (lyrics / video) manage the
+    // navigation bar on top of this.
+    val mainPlayerVisible = expanded && state.current != null
+    DisposableEffect(mainPlayerVisible) {
+        val activity = generateSequence(currentView.context) { (it as? android.content.ContextWrapper)?.baseContext }
+            .filterIsInstance<android.app.Activity>().firstOrNull()
+        val controller = activity?.window?.let { WindowCompat.getInsetsController(it, currentView) }
+        val previousBehavior = controller?.systemBarsBehavior
+        if (mainPlayerVisible) {
+            controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller?.hide(WindowInsetsCompat.Type.statusBars())
+        }
+        onDispose {
+            if (mainPlayerVisible) {
+                controller?.show(WindowInsetsCompat.Type.statusBars())
+                previousBehavior?.let { controller?.systemBarsBehavior = it }
+            }
+        }
+    }
     val context = androidx.compose.ui.platform.LocalContext.current
     val requestAddToPlaylist = remember(viewModel) {
         { track: PlayableTrack ->
@@ -2291,7 +2314,9 @@ private fun FullPlayer(
         }
         onDispose {
             if (fullscreenActive) {
-                controller?.show(WindowInsetsCompat.Type.systemBars())
+                // Restore only the navigation bar: the status bar is owned
+                // by PlayerHost for as long as the main player stays open.
+                controller?.show(WindowInsetsCompat.Type.navigationBars())
                 previousBehavior?.let { controller?.systemBarsBehavior = it }
             }
         }
@@ -2311,7 +2336,9 @@ private fun FullPlayer(
         }
         onDispose {
             if (videoFullscreenActive) {
-                controller?.show(WindowInsetsCompat.Type.systemBars())
+                // Restore only the navigation bar: the status bar is owned
+                // by PlayerHost for as long as the main player stays open.
+                controller?.show(WindowInsetsCompat.Type.navigationBars())
                 previousBehavior?.let { controller?.systemBarsBehavior = it }
                 if (originalOrientation != null) {
                     activity?.requestedOrientation = originalOrientation
