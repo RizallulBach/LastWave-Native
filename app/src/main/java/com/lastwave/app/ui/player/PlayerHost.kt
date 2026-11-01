@@ -115,6 +115,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -2222,6 +2223,67 @@ private val AppleMusicFallbackGradient = listOf(
 )
 
 @Composable
+/**
+ * BitChord-style inline lyric: the currently sung synced line, shown on the
+ * NOW_PLAYING tab right above the seek bar, so the live lyric can be read
+ * without opening the full lyrics tab (which stays one tap away — tapping
+ * this line opens it too). Renders nothing unless line-synced lyrics are
+ * loaded for the track. Progress is collected inside this leaf only, so the
+ * frequent position updates recompose just this line (the same isolation
+ * ModernLyricsPanel uses) instead of the whole player.
+ */
+@Composable
+private fun InlineSyncedLyricLine(
+    lyricsState: LyricsUiState,
+    progressState: StateFlow<PlaybackProgressState>,
+    lyricsOffsetMs: Long,
+    onOpenLyrics: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val success = lyricsState as? LyricsUiState.Success ?: return
+    if (!success.isSynced || success.isInstrumental || success.lines.isEmpty()) return
+    val lines = success.lines
+    val progress by progressState.collectAsStateWithLifecycle()
+    val lineIndex = activeLineIndex(lines, progress.positionMs + lyricsOffsetMs)
+    val line = lines.getOrNull(lineIndex) ?: lines.first()
+    AnimatedContent(
+        targetState = line,
+        transitionSpec = {
+            (fadeIn(animationSpec = tween(220)) +
+                slideInVertically(animationSpec = tween(220)) { height -> height / 3 }) togetherWith
+                (fadeOut(animationSpec = tween(140)) +
+                    slideOutVertically(animationSpec = tween(140)) { height -> -height / 3 })
+        },
+        label = "inlineSyncedLyric",
+        modifier = modifier,
+    ) { currentLine ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onOpenLyrics)
+                .padding(vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = currentLine.text.ifBlank { "♪" },
+                color = Color.White.copy(alpha = 0.92f),
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                Icons.Filled.ChevronRight,
+                contentDescription = "Open lyrics",
+                tint = Color.White.copy(alpha = 0.55f),
+                modifier = Modifier.size(18.dp),
+            )
+        }
+    }
+}
+
 private fun FullPlayer(
     state: MusicPlayerState,
     progressState: StateFlow<PlaybackProgressState>,
@@ -3055,6 +3117,8 @@ private fun FullPlayer(
                                     state = state,
                                     player = player,
                                     progressState = progressState,
+                                    lyricsState = lyricsState,
+                                    lyricsOffsetMs = lyricsOffsetMs,
                                     wavySeekbarEnabled = wavySeekbarEnabled,
                                     showSleeveCanvas = showSleeveCanvas,
                                     canvas = activeCanvas ?: canvas,
@@ -3556,6 +3620,12 @@ private fun FullPlayer(
                                             }
                                         }
                                     }
+                                    InlineSyncedLyricLine(
+                                        lyricsState = lyricsState,
+                                        progressState = progressState,
+                                        lyricsOffsetMs = lyricsOffsetMs,
+                                        onOpenLyrics = { onTabChange(FullPlayerTab.LYRICS) },
+                                    )
                                     Spacer(Modifier.height(10.dp))
                                     SeekBar(
                                         progressState = progressState,
@@ -3691,6 +3761,8 @@ private fun FullPlayerLandscape(
     state: MusicPlayerState,
     player: MusicPlayer,
     progressState: StateFlow<PlaybackProgressState>?,
+    lyricsState: LyricsUiState,
+    lyricsOffsetMs: Long = 0L,
     wavySeekbarEnabled: Boolean,
     showSleeveCanvas: Boolean,
     canvas: com.lastwave.app.data.canvas.CanvasArtwork?,
@@ -4149,6 +4221,13 @@ private fun FullPlayerLandscape(
                     }
                 }
             }
+
+            InlineSyncedLyricLine(
+                lyricsState = lyricsState,
+                progressState = progressState ?: player.progressState,
+                lyricsOffsetMs = lyricsOffsetMs,
+                onOpenLyrics = { onTabChange(FullPlayerTab.LYRICS) },
+            )
 
             Spacer(Modifier.height(20.dp))
 
