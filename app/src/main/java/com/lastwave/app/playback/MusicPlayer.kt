@@ -541,6 +541,12 @@ class MusicPlayer @Inject constructor(
         .stateIn(applicationScope, SharingStarted.Eagerly, PlaybackProgressState())
 
     private var errorRetryCount = 0
+    // Fork fix (Atmos <-> stereo switch): format family of the track that
+    // most recently played for real, and the mediaId that already received
+    // a full pipeline reset after a family-switch start failure. Used by
+    // onPlayerError to recover instead of holding the queue forever.
+    @Volatile private var lastAudibleTrackSpatial: Boolean? = null
+    @Volatile private var familySwitchResetMediaId: String? = null
     var appVolume: Float = 1f
         private set
     private var retryMediaId: String? = null
@@ -918,6 +924,13 @@ class MusicPlayer @Inject constructor(
                     unavailableAttemptCounts.remove(it)
                     silentRecoveries.remove(it)
                 }
+                // Fork fix bookkeeping: this track is genuinely playing, so
+                // remember its format family; a different track playing also
+                // retires any family-switch reset marker.
+                lastAudibleTrackSpatial = isSpatialAudioCodec(_state.value.audioCodec)
+                if (familySwitchResetMediaId != player.currentMediaItem?.mediaId) {
+                    familySwitchResetMediaId = null
+                }
                 resetRenderWatchdog()
             }
         }
@@ -1100,6 +1113,21 @@ class MusicPlayer @Inject constructor(
             val rejectedYouTubeCandidate = rejectedStream?.youtubeCandidate
             val videoId = rejectedYouTubeCandidate?.videoId ?: trackVideoId
             val httpStatus = error.httpStatusCodeOrNull()
+            // Fork fix: a decoder/parsing failure at position ~0 on the
+            // first track of a DIFFERENT format family (Dolby Atmos <->
+            // stereo) than the one that just played is the known switch
+            // failure - the decoder/output handover died, not the song.
+            // The reset-retry below revives it; if even that fails, the
+            // queue skips instead of holding on a dead track forever.
+            val failedTrackSpatial = isSpatialAudioCodec(rejectedStream?.audioCodec ?: _state.value.audioCodec)
+            val familySwitchStartFailure = !playedAudibly &&
+                isDecoderClassFailure(error) &&
+                lastAudibleTrackSpatial != null &&
+                lastAudibleTrackSpatial != failedTrackSpatial
+            val familySwitchSkipAllowed = !playedAudibly &&
+                isDecoderClassFailure(error) &&
+                failedMediaId != null &&
+                failedMediaId == familySwitchResetMediaId
 
             if (isGenuineLocal) {
                 _state.update { it.copy(error = error.message ?: "Local file playback error (${error.errorCodeName})", isPlaying = false, isBuffering = false) }
@@ -1193,7 +1221,18 @@ class MusicPlayer @Inject constructor(
                             if (failedIndex in 0 until player.mediaItemCount) {
                                 registerPreparedStream(stream)
                                 publishResolvedQuality(stream, expectedMediaId = failedMediaId)
-                                applyDacRoutingFor(dacRateFor(stream))
+                                applyDacRoutingFor(dacRateFor(stream), stream.audioCodec)
+                                if (familySwitchStartFailure && failedMediaId != null && familySwitchResetMediaId != failedMediaId) {
+                                    // Fork fix: hand the new format family a
+                                    // clean pipeline - stop() releases the
+                                    // previous family's decoders/renderers, so
+                                    // the retry below initializes this track
+                                    // from scratch instead of inheriting the
+                                    // broken handover state.
+                                    familySwitchResetMediaId = failedMediaId
+                                    android.util.Log.w("MusicPlayer", "Family-switch start failure on '${currentTrack.title}': full pipeline reset before retry")
+                                    runCatching { player.stop() }
+                                }
                                 logStreamEvent("player-retry", stream, retry = retry)
                                 cacheCurrentTrackStream(stream)
                                 learnQueueVideoId(failedIndex, updated, stream.youtubeCandidate?.videoId, stream.rematchedFromVideoId)
@@ -1258,7 +1297,7 @@ class MusicPlayer @Inject constructor(
                             failedMediaId = failedMediaId,
                             expectedGeneration = generation,
                             failure = retryResolutionFailure ?: error,
-                            allowAutoSkip = retryProvenUnplayable ||
+                            allowAutoSkip = retryProvenUnplayable || familySwitchSkipAllowed ||
                                 shouldAutoSkipForPlaybackError(error, playedAudibly, confirmedUnplayable),
                         )
                     }
@@ -1289,7 +1328,7 @@ class MusicPlayer @Inject constructor(
                 return
             }
             _state.update { it.copy(error = error.message ?: "Playback error (${error.errorCodeName})", isBuffering = false) }
-            scheduleUnavailableMediaSkip(failedIndex, failedMediaId, failure = error, allowAutoSkip = shouldAutoSkipForPlaybackError(error, playedAudibly, confirmedUnplayable))
+            scheduleUnavailableMediaSkip(failedIndex, failedMediaId, failure = error, allowAutoSkip = familySwitchSkipAllowed || shouldAutoSkipForPlaybackError(error, playedAudibly, confirmedUnplayable))
         }
     }
 
@@ -8218,6 +8257,22 @@ class MusicPlayer @Inject constructor(
         if (!transientHttp && !transientNetwork) return 0L
         val exponential = PLAYBACK_RETRY_BASE_DELAY_MS * (1L shl (retry - 1).coerceAtMost(3))
         return exponential + Random.nextLong(PLAYBACK_RETRY_JITTER_MS + 1L)
+    }
+
+    /** Fork fix: failures where the decoder/parser could not even start
+     *  the track (as opposed to network/IO trouble while streaming it). */
+    private fun isDecoderClassFailure(error: PlaybackException): Boolean {
+        return when (error.errorCode) {
+            PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+            PlaybackException.ERROR_CODE_DECODING_FAILED,
+            PlaybackException.ERROR_CODE_DECODER_QUERY_FAILED,
+            PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED -> true
+            else -> false
+        }
     }
 
     private fun isRetryablePlaybackFailure(error: PlaybackException): Boolean {
