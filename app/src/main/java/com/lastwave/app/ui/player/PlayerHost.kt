@@ -56,6 +56,7 @@ import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
@@ -124,7 +125,6 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Headphones
@@ -205,6 +205,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TransformOrigin
@@ -232,6 +233,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -3600,37 +3602,6 @@ private fun FullPlayer(
                                                     )
                                                 }
                                             }
-                                            val lyricsInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                                            val isLyricsPressed by lyricsInteraction.collectIsPressedAsState()
-                                            val lyricsScale by animateFloatAsState(
-                                                targetValue = if (isLyricsPressed) 0.82f else 1.0f,
-                                                animationSpec = ExpressiveMotion.spatialSpring(),
-                                                label = "lyricsScale",
-                                            )
-                                            LiquidGlassSurface(
-                                                glassModifier = Modifier.liquidGlassChrome(CircleShape, LocalLiquidGlass.current, LiquidGlassPreset.PlayerControls, interactionSource = lyricsInteraction),
-                                                onClick = { onTabChange(FullPlayerTab.LYRICS) },
-                                                interactionSource = lyricsInteraction,
-                                                shape = CircleShape,
-                                                color = liquidGlassContainerColor(Color.White.copy(alpha = 0.14f)),
-                                                contentColor = Color.White.copy(alpha = 0.90f),
-                                                tonalElevation = 0.dp,
-                                                shadowElevation = 0.dp,
-                                                modifier = Modifier
-                                                    .size(46.dp)
-                                                    .graphicsLayer {
-                                                        scaleX = lyricsScale
-                                                        scaleY = lyricsScale
-                                                    },
-                                            ) {
-                                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        Icons.Filled.FormatQuote,
-                                                        contentDescription = stringResource(com.lastwave.app.R.string.player_show_lyrics_cd),
-                                                        modifier = Modifier.size(24.dp),
-                                                    )
-                                                }
-                                            }
                                         }
                                     }
                                     InlineSyncedLyricLine(
@@ -4201,37 +4172,6 @@ private fun FullPlayerLandscape(
                         }
                     }
 
-                    val lyricsInteraction = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                    val isLyricsPressed by lyricsInteraction.collectIsPressedAsState()
-                    val lyricsScale by animateFloatAsState(
-                        targetValue = if (isLyricsPressed) 0.82f else 1.0f,
-                        animationSpec = ExpressiveMotion.spatialSpring(),
-                        label = "landscapeLyricsScale",
-                    )
-                    LiquidGlassSurface(
-                        glassModifier = Modifier.liquidGlassChrome(CircleShape, LocalLiquidGlass.current, LiquidGlassPreset.PlayerControls, interactionSource = lyricsInteraction),
-                        onClick = { onTabChange(FullPlayerTab.LYRICS) },
-                        interactionSource = lyricsInteraction,
-                        shape = CircleShape,
-                        color = liquidGlassContainerColor(Color.White.copy(alpha = 0.14f)),
-                        contentColor = Color.White.copy(alpha = 0.90f),
-                        tonalElevation = 0.dp,
-                        shadowElevation = 0.dp,
-                        modifier = Modifier
-                            .size(50.dp)
-                            .graphicsLayer {
-                                scaleX = lyricsScale
-                                scaleY = lyricsScale
-                            },
-                    ) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Filled.FormatQuote,
-                                contentDescription = "Show lyrics",
-                                modifier = Modifier.size(26.dp),
-                            )
-                        }
-                    }
                 }
             }
 
@@ -4714,19 +4654,14 @@ private fun MainControls(state: MusicPlayerState, player: MusicPlayer, isTranslu
     val isNextPressed by nextInteraction.collectIsPressedAsState()
     val nextScale by animateFloatAsState(if (isNextPressed) 0.85f else 1.0f, ExpressiveMotion.spatialSpring(), label = "nextScale")
 
-    // Adaptive transport row: fixed 58+188+58dp used to overflow narrow
-    // screens (320dp class + parent padding), clipping the side buttons so
-    // Next looked crushed against the edge. The pill now flexes between a
-    // legible floor and its design width; prev/next never clip on any
-    // screen size or Android version.
+    // Transport row: prev / play-pause / next. All three are circular
+    // frosted-glass buttons of the same size (fork change, see below).
     val sideSize = if (isTranslucent) 54.dp else 58.dp
     val gapSize = if (isTranslucent) 18.dp else 16.dp
     androidx.compose.foundation.layout.BoxWithConstraints(
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ) {
-        val pillWidth = (maxWidth - sideSize * 2 - gapSize * 2)
-            .coerceIn(112.dp, if (isTranslucent) 180.dp else 188.dp)
         Row(
             horizontalArrangement = Arrangement.spacedBy(gapSize, Alignment.CenterHorizontally),
             verticalAlignment = Alignment.CenterVertically,
@@ -4751,44 +4686,26 @@ private fun MainControls(state: MusicPlayerState, player: MusicPlayer, isTranslu
                 Icon(Icons.Filled.SkipPrevious, "Previous", Modifier.size(if (isTranslucent) 28.dp else 31.dp))
             }
         }
-        val pillShape = RoundedCornerShape(100)
-        // Single source of truth for "glass is actually refracting": the
-        // container helper returns Transparent only when setting + device
-        // capability + backdrop all hold. The old contentColor checked only
-        // the *setting*, so setting-ON with an inactive effect (incapable
-        // device, missing backdrop) rendered a white icon on the solid-white
-        // fallback below â€” the "whole white" play button. Gating content on
-        // the same active flag closes that mismatch for every path.
-        val isPillGlassActive = LocalLiquidGlass.current &&
-            isLiquidGlassBackdropSupported() &&
-            LocalLiquidGlassBackdrop.current != null
+        // Fork change (Tiar's request): the wide pill with its "Play"/"Pause"
+        // text label becomes a circular frosted-glass button that matches
+        // prev/next exactly - same size, same glass, icon only, no text.
         LiquidGlassSurface(
-            glassModifier = Modifier.liquidGlassChrome(pillShape, LocalLiquidGlass.current, LiquidGlassPreset.FloatingControls, interactionSource = playInteraction),
+            glassModifier = Modifier.liquidGlassChrome(CircleShape, LocalLiquidGlass.current, LiquidGlassPreset.PlayerControls, interactionSource = playInteraction),
             onClick = player::togglePlayPause,
             interactionSource = playInteraction,
-            shape = pillShape,
-            // Fallback matches the sibling prev/next buttons (14% white veil,
-            // never solid white): on the full player's dark scrim the white
-            // icon stays readable with or without refraction.
-            color = liquidGlassContainerColor(if (isTranslucent) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)),
-            contentColor = if (isPillGlassActive) {
-                if (isTranslucent) Color.White else MaterialTheme.colorScheme.primary
-            } else if (isTranslucent) Color.White.copy(alpha = 0.94f) else MaterialTheme.colorScheme.onPrimary,
+            shape = CircleShape,
+            color = liquidGlassContainerColor(if (isTranslucent) Color.White.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.40f)),
+            contentColor = if (isTranslucent) Color.White.copy(alpha = 0.94f) else MaterialTheme.colorScheme.onSurface,
             tonalElevation = 0.dp,
             shadowElevation = 0.dp,
             modifier = Modifier
-                .width(pillWidth)
-                .height(if (isTranslucent) 56.dp else 60.dp)
+                .size(sideSize)
                 .graphicsLayer {
                     scaleX = playScale
                     scaleY = playScale
                 },
         ) {
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
-            ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 if (state.isBuffering) {
                     ExpressiveInlineLoadingIndicator(
                         size = if (isTranslucent) 28.dp else 30.dp,
@@ -4796,14 +4713,7 @@ private fun MainControls(state: MusicPlayerState, player: MusicPlayer, isTranslu
                         strokeWidth = 3.dp,
                     )
                 } else {
-                    AnimatedPlayPauseIcon(state.isPlaying, Modifier.size(if (isTranslucent) 28.dp else 30.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (state.isPlaying) "Pause" else "Play",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = androidx.compose.material3.LocalContentColor.current
-                    )
+                    AnimatedPlayPauseIcon(state.isPlaying, Modifier.size(if (isTranslucent) 28.dp else 31.dp))
                 }
             }
         }
@@ -5416,13 +5326,27 @@ private fun AppleMusicQualityBadge(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            Icon(
-                imageVector = badgeIcon,
-                contentDescription = null,
-                tint = tintColor,
-                modifier = Modifier.size(15.dp),
-            )
-            Spacer(Modifier.width(5.dp))
+            if (isSpatial && !isMixActive && !isFadeActive) {
+                // Fork change (Tiar's request): the real Dolby double-D mark
+                // (white silhouette on transparency, R.drawable.dolby_atmos_mark)
+                // instead of the generic surround-sound glyph, with a touch
+                // more air before the label text.
+                Image(
+                    painter = painterResource(id = com.lastwave.app.R.drawable.dolby_atmos_mark),
+                    contentDescription = null,
+                    colorFilter = ColorFilter.tint(tintColor),
+                    modifier = Modifier.size(width = 20.dp, height = 13.dp),
+                )
+                Spacer(Modifier.width(7.dp))
+            } else {
+                Icon(
+                    imageVector = badgeIcon,
+                    contentDescription = null,
+                    tint = tintColor,
+                    modifier = Modifier.size(15.dp),
+                )
+                Spacer(Modifier.width(5.dp))
+            }
             val fullText = when {
                 isMixActive || isFadeActive -> displayTitle
                 baseLabel.isNotBlank() && !baseLabel.equals(displayTitle, ignoreCase = true) && !baseLabel.equals("AUDIO", ignoreCase = true) -> "$displayTitle \u2022 $baseLabel"
