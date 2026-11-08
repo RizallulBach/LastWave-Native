@@ -57,7 +57,7 @@ class AddonClient(
             ?: runCatching {
                 decodeSecretBytes(BuildConfig.ADDON_CLIENT_SECRET_BYTES, BuildConfig.SECRET_MASK_BYTES)
             }.getOrNull()?.takeIf { it.isNotBlank() }
-            ?: return
+            ?: DEFAULT_ADDON_SECRET
         try {
             val uri = java.net.URI(urlStr)
             val path = uri.path ?: "/"
@@ -278,6 +278,7 @@ class AddonClient(
 
     companion object {
         private const val TAG = "AddonClient"
+        private const val DEFAULT_ADDON_SECRET = "36d96a751b12ee481c281a8a8e64c482d0c1634a22061ab72f40175017818b85"
 
         fun decodeSecretBytes(data: ByteArray, mask: ByteArray): String {
             if (data.isEmpty() || mask.isEmpty()) return ""
