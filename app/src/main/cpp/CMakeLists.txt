@@ -19,7 +19,10 @@ find_package(oboe REQUIRED CONFIG)
 include(FetchContent)
 FetchContent_Declare(
     soxr_source
-    URL https://github.com/chirlu/soxr/archive/refs/tags/0.1.3.tar.gz
+    # Fork: fetch via codeload (GitHub's archive host) instead of the
+    # github.com redirect endpoint, which intermittently returns 5xx
+    # and failed CI on 2026-11-08. Same tarball; hash below unchanged.
+    URL https://codeload.github.com/chirlu/soxr/tar.gz/refs/tags/0.1.3
     URL_HASH SHA256=db6ca1b1e8405c6ef92f8294fc123d910abf0a114003b3f0f13fa57a95fd62d0
 )
 FetchContent_GetProperties(soxr_source)
