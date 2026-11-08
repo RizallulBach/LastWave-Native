@@ -3980,13 +3980,15 @@ private fun FullPlayerLandscape(
         // Left Column: Large Album Artwork & Canvas with gestures
         BoxWithConstraints(
             modifier = Modifier
-                .weight(1f)
+                .weight(1.6f)
                 .fillMaxHeight(),
             contentAlignment = Alignment.Center,
         ) {
-            val artworkSize = (minOf(maxWidth, maxHeight) - 16.dp)
+            // Fork (landscape stage card): fill the whole column instead of
+            // upstream's 480.dp cap, so the canvas/artwork becomes a large
+            // rounded stage card beside the control rail.
+            val artworkSize = (minOf(maxWidth, maxHeight) - 8.dp)
                 .coerceAtLeast(0.dp)
-                .coerceAtMost(480.dp)
 
             val glowAlpha by animateFloatAsState(
                 targetValue = if (state.isPlaying) 0.65f else 0.35f,
@@ -4020,12 +4022,13 @@ private fun FullPlayerLandscape(
             )
 
             Surface(
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(28.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.88f),
                 tonalElevation = 6.dp,
                 shadowElevation = if (state.isPlaying) 28.dp else 12.dp,
                 modifier = Modifier
                     .size(artworkSize)
+                    .border(1.dp, Color.White.copy(alpha = 0.13f), RoundedCornerShape(28.dp))
                     .graphicsLayer {
                         scaleX = artworkPlayingScale
                         scaleY = artworkPlayingScale
@@ -4142,7 +4145,7 @@ private fun FullPlayerLandscape(
                     PlayerArtwork(
                         track = track,
                         modifier = Modifier.fillMaxSize(),
-                        corner = 24.dp,
+                        corner = 28.dp,
                         canvas = if (showSleeveCanvas) canvas else null,
                         isPlaying = state.isPlaying,
                         pausedForTransition = shownDismissY > 1f,
@@ -4245,7 +4248,7 @@ private fun FullPlayerLandscape(
         // Right Column: Controls & Metadata
         Column(
             modifier = Modifier
-                .weight(1.15f)
+                .weight(1f)
                 .fillMaxHeight(),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
