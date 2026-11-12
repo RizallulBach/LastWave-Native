@@ -55,6 +55,8 @@ add_library(
     ParametricEqBridge.cpp
     NativeBridge.cpp
     SecretsBridge.cpp
+    dsd/DsdDecimator.cpp
+    dsd/DsdJniBridge.cpp
     automix/AutoMixJniBridge.cpp
     automix/LinkwitzRileyCrossover.cpp
     automix/TransientPreservingStretcher.cpp
@@ -71,6 +73,9 @@ target_include_directories(
 target_compile_options(
     lastwave_audio
     PRIVATE
+    # Debug builds had no -O flag, so the DSP ran at -O0. Keep symbols but
+    # optimize the audio path; release already uses RelWithDebInfo (-O2).
+    $<$<CONFIG:Debug>:-O2>
     -Wall
     -Wextra
     -Wpedantic
