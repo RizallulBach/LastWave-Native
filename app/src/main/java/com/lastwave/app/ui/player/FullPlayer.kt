@@ -399,7 +399,7 @@ internal fun InlineSyncedLyricLine(
 }
 
 @Composable
-
+internal fun FullPlayer(
     state: MusicPlayerState,
     progressState: StateFlow<PlaybackProgressState>,
     player: MusicPlayer,
